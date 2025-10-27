@@ -16,25 +16,30 @@ public enum CardType {
     _10,
     JACK,
     QUEEN,
-    KING
+    KING,
+    //WILD
 }
 
 public enum Suit {
     DIAMONDS,
     SPADES,
     HEARTS,
-    CLUBS
+    CLUBS,
+    //WILD
 }
 
+// Interface for objects that a card can be dragged from (tableau, talon)
 public interface IDragFrom {
     public void RemCard(Card card);
     public void AddCard(Card card);
 }
 
+// Interface for objects that can be determine which cards are movable
 public interface IFindMoveableCards {
     public List<Card> FindMoveableCards();
 }
 
+// Interface for objects that can receive cards being dragged
 public interface IDropTarget {
     public void DragOver(Card c);
     public bool CanDrop(Card c);
@@ -43,11 +48,14 @@ public interface IDropTarget {
 }
 
 public static class MyExtensions {
+    // Adds a card's PictureBox to a control
     public static void AddCard(this Control control, Card card) {
         if (card is not null) {
             control.Controls.Add(card.PicBox);
         }
     }
+
+    // Removes a card's PictureBox from a control
     public static void RemCard(this Control control, Card card) {
         if (card is not null) {
             control.Controls.Remove(card.PicBox);
@@ -56,12 +64,13 @@ public static class MyExtensions {
 }
 
 public class Deck {
-    private Queue<Card> cards;
+    private Queue<Card> cards; // Queue to hold the cards in the deck
 
     public Deck() {
         RegeneratePool();
     }
 
+    // Fills deck with all possible combinations of card types and suits(a complete deck)
     private void RegeneratePool() {
         cards = new();
         foreach (var cardType in Enum.GetValues<CardType>()) {
@@ -84,14 +93,18 @@ public class Card {
     public Suit Suit { get; private set; }
     public bool FaceUp { get; private set; }
     public PictureBox PicBox { get; private set; }
+
+    // Gets front or back image depending on value of FaceUp
     public Bitmap PicImg {
         get => FaceUp ? Resources.ResourceManager.GetObject($"{Type.ToString().Replace("_", "").ToLower()}_of_{Suit.ToString().ToLower()}") as Bitmap
                       : Resources.back_green;
     }
-    private Point dragOffset;
-    private Point relLocBeforeDrag;
-    private Control conBeforeDrag;
-    private IDropTarget lastDropTarget;
+
+    // Fields used for drag-and-drop logic
+    private Point dragOffset; // offset between mouse click and card position
+    private Point relLocBeforeDrag; // original location before dragging
+    private Control conBeforeDrag; // original parent control
+    private IDropTarget lastDropTarget; // last potential drop area that was hovered over
 
     public Card(CardType type, Suit suit) {
         Type = type;
@@ -100,6 +113,7 @@ public class Card {
         SetupPicBox();
     }
 
+    // Configures Picturebox and sets up all event handlers for clicking and dragging behavior
     private void SetupPicBox() {
         PicBox = new() {
             Width = 90,
@@ -108,11 +122,15 @@ public class Card {
             BorderStyle = BorderStyle.FixedSingle,
             BackgroundImage = PicImg
         };
+
+        // Flip card when clicked if possible
         PicBox.Click += (sender, e) => {
             if (!FaceUp && Game.CanFlipOver(this)) {
                 FlipOver();
             }
         };
+
+        // Begin dragging when mouse is pressed
         PicBox.MouseDown += (sender, e) => {
             if (e.Button == MouseButtons.Left && Game.IsCardMovable(this)) {
                 FrmGame.DragCard(this);
@@ -125,17 +143,21 @@ public class Card {
                 PicBox.BringToFront();
             }
         };
+
+        // handle dropping logic when mouse is released
         PicBox.MouseUp += (sender, e) => {
             if (FrmGame.IsDraggingCard(this)) {
                 FrmGame.StopDragCard(this);
                 Game.CallDragEndedOnAll();
 
+                // handle valid drop
                 if (lastDropTarget is not null && lastDropTarget.CanDrop(this)) {
                     FrmGame.CardDraggedFrom.RemCard(this);
                     lastDropTarget.Dropped(this);
                     PicBox.BringToFront();
                 }
                 else {
+                    // snap back to original position
                     FrmGame.Instance.RemCard(this);
                     conBeforeDrag?.AddCard(this);
                     PicBox.Location = relLocBeforeDrag;
@@ -143,6 +165,8 @@ public class Card {
                 }
             }
         };
+
+        // Move the card as mouse moves while dragging
         PicBox.MouseMove += (sender, e) => {
             if (FrmGame.CurDragCard == this) {
 
@@ -178,17 +202,20 @@ public class Card {
         };
     }
 
+    // Flip card face up/down
     public void FlipOver() {
         FaceUp = !FaceUp;
         PicBox.BackgroundImage = PicImg;
     }
 
+    // Change card's screen position
     public void AdjustLocation(int left, int top) {
         PicBox.Left = left;
         PicBox.Top = top;
     }
 }
 
+// A Tableau stack is one of the seven main playing stacks
 public class TableauStack : IFindMoveableCards, IDropTarget, IDragFrom {
     public Panel Panel { get; set; }
     public LinkedList<Card> Cards { get; private set; }
