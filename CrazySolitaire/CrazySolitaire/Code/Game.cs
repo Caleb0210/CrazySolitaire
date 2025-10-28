@@ -1,4 +1,6 @@
 ﻿using CrazySolitaire.Properties;
+using System.Diagnostics;
+using System.Threading;
 using Timer = System.Windows.Forms.Timer;
 
 namespace CrazySolitaire;
@@ -484,6 +486,7 @@ public static class Game {
     }
 
     public static void Explode() {
+        FrmGame.stopTime();
         List<Card> allCardsInPlay = new();
         foreach (var foundationStack in FoundationStacks) {
             allCardsInPlay.AddRange(foundationStack.Value.Cards);
