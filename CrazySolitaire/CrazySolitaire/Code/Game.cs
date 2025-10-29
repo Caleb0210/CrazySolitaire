@@ -18,16 +18,14 @@ public enum CardType {
     _10,
     JACK,
     QUEEN,
-    KING,
-    //WILD
+    KING
 }
 
 public enum Suit {
     DIAMONDS,
     SPADES,
     HEARTS,
-    CLUBS,
-    //WILD
+    CLUBS
 }
 
 // Interface for objects that a card can be dragged from (tableau, talon)
@@ -219,8 +217,8 @@ public class Card {
 
 // A Tableau stack is one of the seven main playing stacks
 public class TableauStack : IFindMoveableCards, IDropTarget, IDragFrom {
-    public Panel Panel { get; set; }
-    public LinkedList<Card> Cards { get; private set; }
+    public Panel Panel { get; set; } // UI Panel
+    public LinkedList<Card> Cards { get; private set; } // Cards in the stack
 
     public TableauStack(Panel panel) {
         Panel = panel;
@@ -233,10 +231,12 @@ public class TableauStack : IFindMoveableCards, IDropTarget, IDragFrom {
         c.PicBox.BringToFront();
     }
 
+    // Right now this just gets the top cards. Need to add logic to be able to drag multiple cards
     public List<Card> FindMoveableCards() {
         return Cards.Count > 0 ? [Cards.Last.Value] : [];
     }
 
+    // Highlights panel when dragging over
     public void DragOver(Card c) {
         if (CanDrop(c)) {
             Panel.BackColor = Color.Green;
@@ -246,6 +246,7 @@ public class TableauStack : IFindMoveableCards, IDropTarget, IDragFrom {
         }
     }
 
+    // Controls the rules for dropping onto tableau
     public bool CanDrop(Card c) {
         if (Cards.Count == 0) {
             return c.Type == CardType.KING;
@@ -258,6 +259,7 @@ public class TableauStack : IFindMoveableCards, IDropTarget, IDragFrom {
         }
     }
 
+    // Handles card drop
     public void Dropped(Card c) {
         Cards.AddLast(c);
         FrmGame.Instance.RemCard(c);
@@ -268,6 +270,7 @@ public class TableauStack : IFindMoveableCards, IDropTarget, IDragFrom {
         c.PicBox.BringToFront();
     }
 
+    // Resets Panel color when no longer being dragged over
     public void DragEnded() {
         Panel.BackColor = Color.Transparent;
     }
@@ -281,8 +284,9 @@ public class TableauStack : IFindMoveableCards, IDropTarget, IDragFrom {
     }
 }
 
+// The Talon is stack of face up cards from the draw pile
 public class Talon : IFindMoveableCards, IDragFrom {
-    public Panel Panel { get; private set; }
+    public Panel Panel { get; private set; } // UI Panel
     public Stack<Card> Cards { get; private set; }
 
     public Talon(Panel pan) {
@@ -290,6 +294,7 @@ public class Talon : IFindMoveableCards, IDragFrom {
         Cards = new();
     }
 
+    // puts all Talon cards back into the deck Queue
     public void ReleaseIntoDeck(Deck deck) {
         foreach (var card in Cards) {
             deck.Release(card);
@@ -298,20 +303,23 @@ public class Talon : IFindMoveableCards, IDragFrom {
         Cards.Clear();
     }
 
+    // adds a card to the Talon
     public void AddCard(Card c) {
         Cards.Push(c);
         Panel.AddCard(c);
     }
 
+    // returns the list of cards that are movable (the top card)
     public List<Card> FindMoveableCards() => (Cards.Count > 0 ? [Cards.Peek()] : []);
 
+    // removes the top card if it matches the given card
     public void RemCard(Card card) {
         if (Cards.Peek() == card) {
             Cards.Pop();
         }
     }
 }
-
+// a foundation stack is the piles at the top that count up for each suit
 public class FoundationStack : IFindMoveableCards, IDropTarget, IDragFrom {
     public Panel Panel { get; private set; }
     public Stack<Card> Cards { get; private set; }
@@ -323,8 +331,10 @@ public class FoundationStack : IFindMoveableCards, IDropTarget, IDragFrom {
         Suit = suit;
     }
 
+    // returns the list of cards that can be moved (the top card)
     public List<Card> FindMoveableCards() => (Cards.Count > 0 ? [Cards.Peek()] : []);
 
+    // shows the visual indicator while dragging over
     public void DragOver(Card c) {
         if (CanDrop(c)) {
             Panel.BackColor = Color.Green;
@@ -334,6 +344,9 @@ public class FoundationStack : IFindMoveableCards, IDropTarget, IDragFrom {
         }
     }
 
+    // for a card to be able to be dropped in a foundation stack,
+    // it must be the same suit as the stack and be the correct next card
+    // in ascending order
     public bool CanDrop(Card c) {
         Card topCard = Cards.Count > 0 ? Cards.Peek() : null;
         bool suitCheck;
@@ -355,6 +368,7 @@ public class FoundationStack : IFindMoveableCards, IDropTarget, IDragFrom {
         return suitCheck && typeCheck;
     }
 
+    // handles logic when a card is added to the stack
     public void Dropped(Card c) {
         Cards.Push(c);
         FrmGame.Instance.RemCard(c);
@@ -367,6 +381,7 @@ public class FoundationStack : IFindMoveableCards, IDropTarget, IDragFrom {
         Panel.BackColor = Color.Transparent;
     }
 
+    // changes the Stack to a List, removes the card, and then goes back to a Stack
     public void RemCard(Card card) {
         List<Card> cards = Cards.ToList<Card>();
         cards.Remove(card);
@@ -378,6 +393,7 @@ public class FoundationStack : IFindMoveableCards, IDropTarget, IDragFrom {
     }
 }
 
+// The static Game Class is the main game manager
 public static class Game {
     public static Form TitleForm { get; set; }
     public static Deck Deck { get; private set; }
@@ -424,6 +440,7 @@ public static class Game {
         }
     }
 
+    // given a card c, returns true if it can be moved somewhere and false if it can't
     public static bool IsCardMovable(Card c) {
         bool isMovable = false;
         isMovable |= Talon.FindMoveableCards().Contains(c);
@@ -436,6 +453,7 @@ public static class Game {
         return isMovable;
     }
 
+    // finds which pile (tableau, talon, foundation) a card was dragged from
     public static IDragFrom FindDragFrom(Card c) {
         if (Talon.Cards.Contains(c)) {
             return Talon;
@@ -453,6 +471,7 @@ public static class Game {
         return null;
     }
 
+    // finds which control can receive a card drop
     public static IDropTarget FindDropTarget(Control c) {
         foreach (var foundationStack in FoundationStacks) {
             if (foundationStack.Value.Panel == c) {
@@ -467,6 +486,7 @@ public static class Game {
         return null;
     }
 
+    // resets all highlights after drag ends
     public static void CallDragEndedOnAll() {
         foreach (var foundationStack in FoundationStacks) {
             foundationStack.Value.DragEnded();
@@ -485,6 +505,7 @@ public static class Game {
         return false;
     }
 
+    // explosion animation
     public static void Explode() {
         FrmGame.stopTime();
         List<Card> allCardsInPlay = new();
