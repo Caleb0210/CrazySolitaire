@@ -18,14 +18,18 @@ public enum CardType {
     _10,
     JACK,
     QUEEN,
-    KING
+    KING,
+    WILD
 }
 
 public enum Suit {
     DIAMONDS,
     SPADES,
     HEARTS,
-    CLUBS
+    CLUBS,
+    BLACK_JOKER,
+    RED_JOKER
+
 }
 
 // Interface for objects that a card can be dragged from (tableau, talon)
@@ -34,7 +38,7 @@ public interface IDragFrom {
     public void AddCard(Card card);
 }
 
-// Interface for objects that can be determine which cards are movable
+// Interface for objects that can determine which cards are movable
 public interface IFindMoveableCards {
     public List<Card> FindMoveableCards();
 }
@@ -73,11 +77,22 @@ public class Deck {
     // Fills deck with all possible combinations of card types and suits(a complete deck)
     private void RegeneratePool() {
         cards = new();
+
+        // add standard 52 card deck (13 types x 4 suits)
         foreach (var cardType in Enum.GetValues<CardType>()) {
+            if (cardType == CardType.WILD)
+                continue; // skip wild
             foreach (var suit in Enum.GetValues<Suit>()) {
+                if (suit == Suit.BLACK_JOKER || suit == Suit.RED_JOKER)
+                    continue; // skip wild
                 cards.Enqueue(new(cardType, suit));
             }
         }
+
+        // Add the two wild cards
+        cards.Enqueue(new(CardType.WILD, Suit.BLACK_JOKER));
+        cards.Enqueue(new(CardType.WILD, Suit.RED_JOKER));
+
         // shuffle
         Random rng = new();
         cards = new(cards.OrderBy(_ => rng.Next()));
@@ -96,9 +111,13 @@ public class Card {
 
     // Gets front or back image depending on value of FaceUp
     public Bitmap PicImg {
-        get => FaceUp ? Resources.ResourceManager.GetObject($"{Type.ToString().Replace("_", "").ToLower()}_of_{Suit.ToString().ToLower()}") as Bitmap
-                      : Resources.back_green;
+        get => FaceUp
+            ? (Type == CardType.WILD
+                ? Resources.ResourceManager.GetObject($"{Suit.ToString().ToLower()}") as Bitmap // face up and wild
+                : Resources.ResourceManager.GetObject($"{Type.ToString().Replace("_", "").ToLower()}_of_{Suit.ToString().ToLower()}") as Bitmap) // face up, not wild
+            : Resources.back_green; // not face up
     }
+
 
     // Fields used for drag-and-drop logic
     private Point dragOffset; // offset between mouse click and card position
@@ -248,11 +267,17 @@ public class TableauStack : IFindMoveableCards, IDropTarget, IDragFrom {
 
     // Controls the rules for dropping onto tableau
     public bool CanDrop(Card c) {
+        // King or Wild can start an empty pile
         if (Cards.Count == 0) {
-            return c.Type == CardType.KING;
+            return c.Type == CardType.KING || c.Type == CardType.WILD;
         }
         else {
             Card lastCard = Cards.Last.Value;
+
+            // if either the card being dragged or the card being dragged over are WILD, return true
+            if (lastCard.Type == CardType.WILD || c.Type == CardType.WILD)
+                return true;
+
             bool suitCheck = ((int)lastCard.Suit % 2 != (int)c.Suit % 2);
             bool typeCheck = lastCard.Type == c.Type + 1;
             return (suitCheck && typeCheck);
@@ -349,6 +374,11 @@ public class FoundationStack : IFindMoveableCards, IDropTarget, IDragFrom {
     // in ascending order
     public bool CanDrop(Card c) {
         Card topCard = Cards.Count > 0 ? Cards.Peek() : null;
+
+        // if either the card being dragged or the card being dragged over are WILD, return true
+        if ((topCard is not null && topCard.Type == CardType.WILD) || c.Type == CardType.WILD)
+            return true;
+
         bool suitCheck;
         bool typeCheck;
 
@@ -421,6 +451,8 @@ public static class Game {
         // create foundation stacks
         FoundationStacks = new();
         foreach (var suit in Enum.GetValues<Suit>()) {
+            if(suit == Suit.BLACK_JOKER || suit == Suit.RED_JOKER)
+                continue; // skip wild
             FoundationStacks.Add(suit, new(panFoundationStacks[suit], suit));
         }
 
