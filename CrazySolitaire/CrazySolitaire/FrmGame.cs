@@ -125,5 +125,47 @@ namespace CrazySolitaire {
         {
             Game.TitleForm.Close();
         }
+        public void ShowWinScreen()
+        {
+            // Stop interaction
+            this.Enabled = false;
+
+            Form winForm = new Form()
+            {
+                Size = new Size(400, 300),
+                StartPosition = FormStartPosition.CenterScreen,
+                Text = "You Win!",
+                BackColor = Color.DarkGreen,
+                FormBorderStyle = FormBorderStyle.FixedDialog
+            };
+
+            Label lbl = new Label()
+            {
+                Text = "Congratulations! You won!",
+                ForeColor = Color.White,
+                Font = new Font("Arial", 33, FontStyle.Bold),
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleCenter
+            };
+
+            Button btnQuit = new Button()
+            {
+                Text = "Quit",
+                Dock = DockStyle.Bottom,
+                Height = 50
+            };
+
+            // exit for the whole game
+            btnQuit.Click += (s, e) =>
+            {
+                winForm.Close();
+                this.Close();
+            };
+
+            winForm.Controls.Add(lbl);
+            winForm.Controls.Add(btnQuit);
+            winForm.ShowDialog();
+        }
+
     }
 }
