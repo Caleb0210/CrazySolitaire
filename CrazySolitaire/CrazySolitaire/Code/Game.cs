@@ -467,12 +467,19 @@ public class FoundationStack : IFindMoveableCards, IDropTarget, IDragFrom {
     }
 
     // handles logic when a card is added to the stack
-    public void Dropped(Card c) {
+    public void Dropped(Card c)
+    {
         Cards.Push(c);
         FrmGame.Instance.RemCard(c);
         Panel.AddCard(c);
         c.AdjustLocation(0, 0);
         c.PicBox.BringToFront();
+
+        // check if the player has completed the game
+        if (Game.HasWon())
+        {
+            FrmGame.Instance.ShowWinScreen();  // show the win screen
+        }
     }
 
     public void DragEnded() {
@@ -604,6 +611,12 @@ public static class Game {
             }
         }
         return false;
+    }
+
+    public static bool HasWon()
+    {
+        // win when all foundations have 13 cards 
+        return FoundationStacks.Values.All(f => f.Cards.Count == 13);
     }
 
     // explosion animation
