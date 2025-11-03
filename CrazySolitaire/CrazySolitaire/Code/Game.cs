@@ -152,42 +152,85 @@ public class Card {
         // Begin dragging when mouse is pressed
         PicBox.MouseDown += (sender, e) => {
             if (e.Button == MouseButtons.Left && Game.IsCardMovable(this)) {
-                FrmGame.DragCard(this);
+
+                List<Card> cardsToMove = new();
+                TableauStack tableau = Game.TableauStacks.FirstOrDefault(ts => ts.Cards.Contains(this));
+
+                if (tableau != null) // if the card is in the tableau
+                { 
+                    cardsToMove = tableau.GetStackFrom(this);
+                    FrmGame.DragCards(cardsToMove);
+                }
+                else 
+                {
+                    cardsToMove.Add(this);
+                    FrmGame.DragCards(cardsToMove);
+                }
+
+                // store dragging info from the clicked card
                 dragOffset = e.Location;
                 conBeforeDrag = PicBox.Parent;
                 relLocBeforeDrag = PicBox.Location;
-                conBeforeDrag.RemCard(this);
-                FrmGame.Instance.AddCard(this);
-                PicBox.Location = e.Location;
-                PicBox.BringToFront();
+
+                // move all cards to the form and maintain their relative locations
+                foreach (Card card in cardsToMove)
+                {
+                    Point originalLoc = card.PicBox.Location;
+                    conBeforeDrag?.RemCard(card);
+                    FrmGame.Instance.AddCard(card);
+
+                    // convert control coords to form coords
+                    Point screenPos = conBeforeDrag.PointToScreen(originalLoc);
+                    card.PicBox.Location = card.PicBox.Parent.PointToClient(screenPos);
+                      
+                    card.PicBox.BringToFront();
+                }
             }
         };
 
         // handle dropping logic when mouse is released
         PicBox.MouseUp += (sender, e) => {
             if (FrmGame.IsDraggingCard(this)) {
-                FrmGame.StopDragCard(this);
+                List<Card> draggedCards = FrmGame.CurDragCards;
+                FrmGame.StopDragCards();
                 Game.CallDragEndedOnAll();
 
                 // handle valid drop
-                if (lastDropTarget is not null && lastDropTarget.CanDrop(this)) {
-                    FrmGame.CardDraggedFrom.RemCard(this);
-                    lastDropTarget.Dropped(this);
-                    PicBox.BringToFront();
+                if (lastDropTarget is not null && lastDropTarget.CanDrop(draggedCards[0])) {
+                    foreach (Card card in draggedCards)
+                    {
+                        FrmGame.CardDraggedFrom.RemCard(card);
+                        lastDropTarget.Dropped(card);
+                        card.PicBox.BringToFront();
+                    }
                 }
                 else {
-                    // snap back to original position
-                    FrmGame.Instance.RemCard(this);
-                    conBeforeDrag?.AddCard(this);
-                    PicBox.Location = relLocBeforeDrag;
-                    PicBox.BringToFront();
+                    // snap back to original positions
+                    for (int i = 0; i < draggedCards.Count; i++)
+                    {
+                        Card card = draggedCards[i];
+                        FrmGame.Instance.RemCard(card);
+                        conBeforeDrag?.AddCard(card);
+
+                        // restore orginial positions with vertical offsets of 20 pixels
+                        card.PicBox.Location = new Point(relLocBeforeDrag.X, relLocBeforeDrag.Y + (i * 20));
+                        PicBox.BringToFront();
+                    }
                 }
             }
         };
 
         // Move the card as mouse moves while dragging
         PicBox.MouseMove += (sender, e) => {
-            if (FrmGame.CurDragCard == this) {
+            if (FrmGame.IsDraggingCard(this)) {
+                List<Card> draggedCards = FrmGame.CurDragCards;
+
+                // the first card drives the movement
+                if (draggedCards.IndexOf(this) == 0)
+                { 
+                    
+                }
+
 
                 var dragged = (Control)sender;
                 Point screenPos = dragged.PointToScreen(e.Location);
@@ -250,9 +293,34 @@ public class TableauStack : IFindMoveableCards, IDropTarget, IDragFrom {
         c.PicBox.BringToFront();
     }
 
-    // Right now this just gets the top cards. Need to add logic to be able to drag multiple cards
+    // Returns a list of cards starting from card c to the end of the list
+    public List<Card> GetStackFrom(Card c) {
+        List<Card> list = new();
+        bool found = false;
+
+        foreach (Card card in Cards) {
+            if (card == c)
+                found = true;
+            if (found)
+                list.Add(card);
+        }
+        return list;
+    }
+
+    // finds the first face-up card and returns the list of all cards from there to the end of the list
     public List<Card> FindMoveableCards() {
-        return Cards.Count > 0 ? [Cards.Last.Value] : [];
+        List<Card> movableCards = new();
+
+        bool foundFaceUp = false;
+        foreach (Card card in Cards) {
+            if (card.FaceUp) {
+                foundFaceUp = true;
+            }
+            if (foundFaceUp) {
+                movableCards.Add(card);
+            }
+        }
+        return movableCards;
     }
 
     // Highlights panel when dragging over
@@ -485,7 +553,8 @@ public static class Game {
         return isMovable;
     }
 
-    // finds which pile (tableau, talon, foundation) a card was dragged from
+    // finds which pile (tableau, talon, foundation) a card was dragged from. It returns something that
+    // implements the IDragFrom interface
     public static IDragFrom FindDragFrom(Card c) {
         if (Talon.Cards.Contains(c)) {
             return Talon;

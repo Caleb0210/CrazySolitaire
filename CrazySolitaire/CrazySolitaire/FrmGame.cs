@@ -6,7 +6,7 @@ namespace CrazySolitaire {
     {
         private static Stopwatch _stopwatch = new Stopwatch();
         private static System.Windows.Forms.Timer _uiTimer = new System.Windows.Forms.Timer();
-        public static Card CurDragCard { get; private set; }
+        public static List<Card> CurDragCards { get; private set; }
         public static IDragFrom CardDraggedFrom { get; private set; }
         public static FrmGame Instance { get; private set; }
 
@@ -109,17 +109,22 @@ namespace CrazySolitaire {
             }
         }
 
-        public static void DragCard(Card c)
+        public static void DragCards(List<Card> cards)
         {
-            CurDragCard = c;
-            CardDraggedFrom = Game.FindDragFrom(c);
+            if (cards == null || cards.Count == 0)
+                return;
+
+            CurDragCards = cards;
+            CardDraggedFrom = Game.FindDragFrom(cards[0]);
         }
-        public static void StopDragCard(Card c)
+        public static void StopDragCards()
         {
-            if (CurDragCard == c)
-                CurDragCard = null;
+            CurDragCards.Clear();
+            CardDraggedFrom = null;
         }
-        public static bool IsDraggingCard(Card c) => CurDragCard == c;
+        public static bool IsDraggingCard(Card c) => CurDragCards.Contains(c);
+
+        public static bool IsDragging => CurDragCards.Count > 0;
 
         private void FrmGame_FormClosing(object sender, FormClosingEventArgs e)
         {
