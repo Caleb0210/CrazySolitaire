@@ -158,6 +158,7 @@ public class Card {
 
                 if (tableau != null) // if the card is in the tableau
                 { 
+                    // get the list of cards starting from the one that is clicked
                     cardsToMove = tableau.GetStackFrom(this);
                     FrmGame.DragCards(cardsToMove);
                 }
@@ -191,7 +192,7 @@ public class Card {
         // handle dropping logic when mouse is released
         PicBox.MouseUp += (sender, e) => {
             if (FrmGame.IsDraggingCard(this)) {
-                List<Card> draggedCards = FrmGame.CurDragCards;
+                List<Card> draggedCards = new(FrmGame.CurDragCards);
                 FrmGame.StopDragCards();
                 Game.CallDragEndedOnAll();
 
@@ -214,7 +215,7 @@ public class Card {
 
                         // restore orginial positions with vertical offsets of 20 pixels
                         card.PicBox.Location = new Point(relLocBeforeDrag.X, relLocBeforeDrag.Y + (i * 20));
-                        PicBox.BringToFront();
+                        card.PicBox.BringToFront();
                     }
                 }
             }
@@ -227,39 +228,47 @@ public class Card {
 
                 // the first card drives the movement
                 if (draggedCards.IndexOf(this) == 0)
-                { 
-                    
+                {
+                    var dragged = (Control)sender;
+                    Point screenPos = dragged.PointToScreen(e.Location);
+                    Point parentPos = dragged.Parent.PointToClient(screenPos);
+                    dragged.Left = screenPos.X - dragOffset.X;
+                    dragged.Top = screenPos.Y - dragOffset.Y;
+
+                    // Find the control currently under the mouse
+                    Control target = FrmGame.Instance.GetChildAtPoint(dragged.Parent.PointToClient(screenPos));
+
+                    // Avoid detecting the dragged control itself
+                    if (target is not null && target != dragged)
+                    {
+                        var dropTarget = Game.FindDropTarget(target);
+                        if (dropTarget is null)
+                        {
+                            Game.CallDragEndedOnAll();
+                        }
+                        else if (dropTarget != lastDropTarget)
+                        {
+                            lastDropTarget?.DragEnded();
+                        }
+                        if (dropTarget != FrmGame.CardDraggedFrom as IDropTarget)
+                        {
+                            dropTarget?.DragOver(this);
+                            lastDropTarget = dropTarget;
+                        }
+                    }
+
+                    Point newLoc = new Point(
+                        parentPos.X - dragOffset.X,
+                        parentPos.Y - dragOffset.Y
+                    );
+
+                    for (int i = 0; i < draggedCards.Count; i++)
+                    {
+                        Card card = draggedCards[i];
+                        card.PicBox.Location = new Point(newLoc.X, newLoc.Y + (i * 20));
+                        card.PicBox.BringToFront();
+                    }
                 }
-
-
-                var dragged = (Control)sender;
-                Point screenPos = dragged.PointToScreen(e.Location);
-                Point parentPos = dragged.Parent.PointToClient(screenPos);
-                dragged.Left = screenPos.X - dragOffset.X;
-                dragged.Top = screenPos.Y - dragOffset.Y;
-
-                // Find the control currently under the mouse
-                Control target = FrmGame.Instance.GetChildAtPoint(dragged.Parent.PointToClient(screenPos));
-
-                // Avoid detecting the dragged control itself
-                if (target is not null && target != dragged) {
-                    var dropTarget = Game.FindDropTarget(target);
-                    if (dropTarget is null) {
-                        Game.CallDragEndedOnAll();
-                    }
-                    else if (dropTarget != lastDropTarget) {
-                        lastDropTarget?.DragEnded();
-                    }
-                    if (dropTarget != FrmGame.CardDraggedFrom as IDropTarget) {
-                        dropTarget?.DragOver(this);
-                        lastDropTarget = dropTarget;
-                    }
-                }
-
-                dragged.Location = new Point(
-                    parentPos.X - dragOffset.X,
-                    parentPos.Y - dragOffset.Y
-                );
             }
         };
     }

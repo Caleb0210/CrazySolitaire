@@ -120,9 +120,11 @@ namespace CrazySolitaire {
         public static void StopDragCards()
         {
             CurDragCards.Clear();
-            CardDraggedFrom = null;
         }
-        public static bool IsDraggingCard(Card c) => CurDragCards.Contains(c);
+        public static bool IsDraggingCard(Card c)
+        {
+            return CurDragCards != null && CurDragCards.Contains(c);
+        }
 
         public static bool IsDragging => CurDragCards.Count > 0;
 
