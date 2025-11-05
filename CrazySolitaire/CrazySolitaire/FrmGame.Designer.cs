@@ -69,6 +69,7 @@
             // panFoundationStack_Clubs
             // 
             panFoundationStack_Clubs.AllowDrop = true;
+            panFoundationStack_Clubs.BackColor = Color.Transparent;
             panFoundationStack_Clubs.BackgroundImage = Properties.Resources.FoundationStackBg_Clubs;
             panFoundationStack_Clubs.BackgroundImageLayout = ImageLayout.Stretch;
             panFoundationStack_Clubs.BorderStyle = BorderStyle.FixedSingle;
@@ -80,6 +81,7 @@
             // 
             // panFoundationStack_Hearts
             // 
+            panFoundationStack_Hearts.BackColor = Color.Transparent;
             panFoundationStack_Hearts.BackgroundImage = Properties.Resources.FoundationStackBg_Hearts;
             panFoundationStack_Hearts.BackgroundImageLayout = ImageLayout.Stretch;
             panFoundationStack_Hearts.BorderStyle = BorderStyle.FixedSingle;
@@ -91,6 +93,7 @@
             // 
             // panFoundationStack_Spades
             // 
+            panFoundationStack_Spades.BackColor = Color.Transparent;
             panFoundationStack_Spades.BackgroundImage = Properties.Resources.FoundationStackBg_Spades;
             panFoundationStack_Spades.BackgroundImageLayout = ImageLayout.Stretch;
             panFoundationStack_Spades.BorderStyle = BorderStyle.FixedSingle;
@@ -102,6 +105,7 @@
             // 
             // panFoundationStack_Diamonds
             // 
+            panFoundationStack_Diamonds.BackColor = Color.Transparent;
             panFoundationStack_Diamonds.BackgroundImage = Properties.Resources.FoundationStackBg_Diamonds;
             panFoundationStack_Diamonds.BackgroundImageLayout = ImageLayout.Stretch;
             panFoundationStack_Diamonds.BorderStyle = BorderStyle.FixedSingle;
