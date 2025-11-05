@@ -168,12 +168,28 @@ public class Card {
             if (FrmGame.IsDraggingCard(this)) {
                 FrmGame.StopDragCard(this);
                 Game.CallDragEndedOnAll();
+                if (!FaceUp && Game.CanFlipOver(this))
+                {
+                    FlipOver();
+                }
 
                 // handle valid drop
+<<<<<<< Updated upstream
                 if (lastDropTarget is not null && lastDropTarget.CanDrop(this)) {
                     FrmGame.CardDraggedFrom.RemCard(this);
                     lastDropTarget.Dropped(this);
                     PicBox.BringToFront();
+=======
+                if (lastDropTarget is not null && lastDropTarget.CanDrop(draggedCards[0])) {
+                    foreach (Card card in draggedCards)
+                    {
+                        FrmGame.CardDraggedFrom.RemCard(card);
+                        lastDropTarget.Dropped(card);
+                        card.PicBox.BringToFront();
+                        
+
+                    }
+>>>>>>> Stashed changes
                 }
                 else {
                     // snap back to original position
@@ -408,8 +424,11 @@ public class FoundationStack : IFindMoveableCards, IDropTarget, IDragFrom {
     }
 
     public void DragEnded() {
+
         Panel.BackColor = Color.Transparent;
     }
+
+
 
     // changes the Stack to a List, removes the card, and then goes back to a Stack
     public void RemCard(Card card) {
