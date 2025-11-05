@@ -136,6 +136,8 @@ namespace CrazySolitaire {
         {
             // Stop interaction
             this.Enabled = false;
+            string time = Timer.Text;
+            stopTime();
 
             Form winForm = new Form()
             {
@@ -148,9 +150,9 @@ namespace CrazySolitaire {
 
             Label lbl = new Label()
             {
-                Text = "Congratulations! You won!",
+                Text = "Congratulations! You won! It took " + time,
                 ForeColor = Color.White,
-                Font = new Font("Arial", 33, FontStyle.Bold),
+                Font = new Font("Arial", 26, FontStyle.Bold),
                 Dock = DockStyle.Fill,
                 TextAlign = ContentAlignment.MiddleCenter
             };

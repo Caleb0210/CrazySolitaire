@@ -484,6 +484,8 @@ public class FoundationStack : IFindMoveableCards, IDropTarget, IDragFrom {
         c.AdjustLocation(0, 0);
         c.PicBox.BringToFront();
 
+        FrmGame.Instance.ShowWinScreen();
+
         // check if the player has completed the game
         if (Game.HasWon())
         {
