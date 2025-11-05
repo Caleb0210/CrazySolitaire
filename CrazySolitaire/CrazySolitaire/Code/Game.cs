@@ -198,11 +198,20 @@ public class Card {
 
                 // handle valid drop
                 if (lastDropTarget is not null && lastDropTarget.CanDrop(draggedCards[0])) {
+                    IDragFrom source = FrmGame.CardDraggedFrom;
                     foreach (Card card in draggedCards)
                     {
                         FrmGame.CardDraggedFrom.RemCard(card);
                         lastDropTarget.Dropped(card);
                         card.PicBox.BringToFront();
+                        if (source is TableauStack sourceTableauStack && sourceTableauStack.Cards.Count > 0)
+                        {
+                            Card newBottomCard = sourceTableauStack.Cards.Last.Value;
+                            if (!newBottomCard.FaceUp)
+                            {
+                                newBottomCard.FlipOver();
+                            }
+                        }
                     }
                 }
                 else {
@@ -484,7 +493,7 @@ public class FoundationStack : IFindMoveableCards, IDropTarget, IDragFrom {
         c.AdjustLocation(0, 0);
         c.PicBox.BringToFront();
 
-        FrmGame.Instance.ShowWinScreen();
+        //here
 
         // check if the player has completed the game
         if (Game.HasWon())
@@ -689,4 +698,19 @@ public static class Game {
         };
         tmr.Start();
     }
+
+    //public static void checkIfFlip()
+    //{
+    //    foreach (var tableauStack in TableauStacks)
+    //    {
+    //        Card c = tableauStack.GetBottomCard();
+    //        FlipOverLastCard(c);
+    //    }
+    //}
+
+    //public static void FlipOverLastCard(Card c)
+    //{
+    //    //FaceUp = !FaceUp;
+    //    c.PicBox.BackgroundImage = c.PicImg;
+    //}
 }
