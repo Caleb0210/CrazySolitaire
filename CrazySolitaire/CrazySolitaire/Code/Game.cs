@@ -121,7 +121,7 @@ public class Card {
 
     // Fields used for drag-and-drop logic
     private Point dragOffset; // offset between mouse click and card position
-    private Point relLocBeforeDrag; // original location before dragging
+    public Point relLocBeforeDrag { get; private set; } // original location before dragging
     private Control conBeforeDrag; // original parent control
     private IDropTarget lastDropTarget; // last potential drop area that was hovered over
 
@@ -171,17 +171,17 @@ public class Card {
                 // store dragging info from the clicked card
                 dragOffset = e.Location;
                 conBeforeDrag = PicBox.Parent;
-                relLocBeforeDrag = PicBox.Location;
+                //relLocBeforeDrag = PicBox.Location;
 
                 // move all cards to the form and maintain their relative locations
                 foreach (Card card in cardsToMove)
                 {
-                    Point originalLoc = card.PicBox.Location;
+                    card.relLocBeforeDrag = card.PicBox.Location;
                     conBeforeDrag?.RemCard(card);
                     FrmGame.Instance.AddCard(card);
 
                     // convert control coords to form coords
-                    Point screenPos = conBeforeDrag.PointToScreen(originalLoc);
+                    Point screenPos = conBeforeDrag.PointToScreen(card.relLocBeforeDrag);
                     card.PicBox.Location = card.PicBox.Parent.PointToClient(screenPos);
                       
                     card.PicBox.BringToFront();
@@ -199,6 +199,7 @@ public class Card {
                 // handle valid drop
                 if (lastDropTarget is not null && lastDropTarget.CanDrop(draggedCards[0])) {
                     IDragFrom source = FrmGame.CardDraggedFrom;
+                    Card newBottomCard = null;
                     foreach (Card card in draggedCards)
                     {
                         FrmGame.CardDraggedFrom.RemCard(card);
@@ -206,13 +207,14 @@ public class Card {
                         card.PicBox.BringToFront();
                         if (source is TableauStack sourceTableauStack && sourceTableauStack.Cards.Count > 0)
                         {
-                            Card newBottomCard = sourceTableauStack.Cards.Last.Value;
+                            newBottomCard = sourceTableauStack.Cards.Last.Value;
                             if (!newBottomCard.FaceUp)
                             {
                                 newBottomCard.FlipOver();
                             }
                         }
                     }
+                    Game.RecordMove(draggedCards, source, lastDropTarget, newBottomCard);
                 }
                 else {
                     // snap back to original positions
@@ -466,8 +468,8 @@ public class FoundationStack : IFindMoveableCards, IDropTarget, IDragFrom {
             return false;
 
         // if either the card being dragged or the card being dragged over are WILD, return true
-        if (topCard is not null)
-            return true;
+        //if (topCard is not null)
+        //    return true;
 
         bool suitCheck;
         bool typeCheck;
@@ -528,6 +530,7 @@ public static class Game {
     public static TableauStack[] TableauStacks;
     public static Talon Talon { get; set; }
     public static int StockReloadCount { get; set; }
+    private static Stack<ICommand> moveStack { get; set; } 
 
     static Game() {
         StockReloadCount = 0;
@@ -567,6 +570,9 @@ public static class Game {
             c.AdjustLocation(0, i * VERT_OFFSET);
             TableauStacks[i].AddCard(c);
         }
+
+        // create move command stack
+        moveStack = new();
     }
 
     // given a card c, returns true if it can be moved somewhere and false if it can't
@@ -633,6 +639,25 @@ public static class Game {
             }
         }
         return false;
+    }
+
+    public static void RecordMove(List<Card> movedCards, IDragFrom src, IDropTarget dest, Card flipped)
+    {
+        MoveCommand cmd = new(movedCards, src, dest, flipped);
+        {
+            moveStack.Push(cmd);
+        }
+    }
+
+    public static bool CanUndo => moveStack.Count > 0;
+
+    public static void UndoLastMove()
+    {
+        if (moveStack.Count > 0)
+        {
+            ICommand cmd = moveStack.Pop();
+            cmd.Undo();
+        }
     }
 
     public static bool HasWon()
@@ -715,4 +740,53 @@ public static class Game {
     //    //FaceUp = !FaceUp;
     //    c.PicBox.BackgroundImage = c.PicImg;
     //}
+}
+
+// interface for a command that can execute and undo a move
+public interface ICommand
+{
+    void Execute();
+    void Undo();
+}
+
+// Stores a single move that was made. Every move knows how to execute or undo itself
+public class MoveCommand : ICommand
+{
+    private readonly List<Card> cardsMoved;
+    private readonly IDragFrom source;
+    private readonly IDropTarget dest;
+
+    private readonly Control previousParent;
+    private readonly List<Point> previousLocations;
+    private readonly Card flippedCard;
+
+    public MoveCommand(List<Card> cardsMoved, IDragFrom source, IDropTarget dest, Card flippedCard)
+    {
+        this.cardsMoved = cardsMoved;
+        this.source = source;
+        this.dest = dest;
+        this.flippedCard = flippedCard;
+    }
+
+    public void Execute()
+    {
+        foreach (Card card in cardsMoved)
+        {
+            source.RemCard(card);
+            dest.Dropped(card);
+        }
+    }
+
+    public void Undo()
+    {
+        flippedCard?.FlipOver();
+        foreach (Card card in cardsMoved)
+        {
+            if (dest is IDragFrom dragFromDest)
+                dragFromDest.RemCard(card);
+            source.AddCard(card);
+            card.PicBox.Location = card.relLocBeforeDrag;
+            card.PicBox.BringToFront();
+        }
+    }
 }

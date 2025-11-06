@@ -126,8 +126,6 @@ namespace CrazySolitaire {
             return CurDragCards != null && CurDragCards.Contains(c);
         }
 
-        public static bool IsDragging => CurDragCards.Count > 0;
-
         private void FrmGame_FormClosing(object sender, FormClosingEventArgs e)
         {
             Game.TitleForm.Close();
@@ -176,5 +174,9 @@ namespace CrazySolitaire {
             winForm.ShowDialog();
         }
 
+        private void button1_Click(object sender, EventArgs e)
+        {
+            Game.UndoLastMove();
+        }
     }
 }
