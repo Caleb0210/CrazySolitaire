@@ -158,6 +158,11 @@ public class Card
                     : Resources.ResourceManager.GetObject($"{Type.ToString().Replace("_", "").ToLower()}_of_{Suit.ToString().ToLower()}") as Bitmap))
             : Resources.back_green;
     }
+    // Fields used for drag-and-drop logic
+    private Point dragOffset; // offset between mouse click and card position
+    public Point relLocBeforeDrag { get; private set; } // original location before dragging
+    private Control conBeforeDrag; // original parent control
+    private IDropTarget lastDropTarget; // last potential drop area that was hovered over
 
     private Point dragOffset;
     private Point relLocBeforeDrag;
@@ -213,58 +218,83 @@ public class Card
                 FlipOver();
         };
 
+        // Begin dragging when mouse is pressed
+        PicBox.MouseDown += (sender, e) => {
+            if (e.Button == MouseButtons.Left && Game.IsCardMovable(this)) {
 
-        PicBox.MouseDown += (sender, e) =>
-        {
-            if (IsReverseCard) return;
-
-            if (e.Button == MouseButtons.Left && Game.IsCardMovable(this))
-            {
                 List<Card> cardsToMove = new();
                 TableauStack tableau = Game.TableauStacks.FirstOrDefault(ts => ts.Cards.Contains(this));
 
-                if (tableau != null)
-                {
+                if (tableau != null) // if the card is in the tableau
+                { 
+                    // get the list of cards starting from the one that is clicked
                     cardsToMove = tableau.GetStackFrom(this);
                     FrmGame.DragCards(cardsToMove);
                 }
-                else
+                else 
                 {
                     cardsToMove.Add(this);
                     FrmGame.DragCards(cardsToMove);
                 }
 
+                // store dragging info from the clicked card
                 dragOffset = e.Location;
                 conBeforeDrag = PicBox.Parent;
-                relLocBeforeDrag = PicBox.Location;
+                //relLocBeforeDrag = PicBox.Location;
 
+                // move all cards to the form and maintain their relative locations
                 foreach (Card card in cardsToMove)
                 {
-                    Point originalLoc = card.PicBox.Location;
+                    card.relLocBeforeDrag = card.PicBox.Location;
                     conBeforeDrag?.RemCard(card);
                     FrmGame.Instance.AddCard(card);
 
-                    Point screenPos = conBeforeDrag.PointToScreen(originalLoc);
+                    // convert control coords to form coords
+                    Point screenPos = conBeforeDrag.PointToScreen(card.relLocBeforeDrag);
                     card.PicBox.Location = card.PicBox.Parent.PointToClient(screenPos);
+                      
                     card.PicBox.BringToFront();
                 }
             }
         };
 
-        PicBox.MouseUp += (sender, e) =>
-        {
-            if (FrmGame.IsDraggingCard(this))
-            {
+        // handle dropping logic when mouse is released
+        PicBox.MouseUp += (sender, e) => {
+            if (FrmGame.IsDraggingCard(this)) {
                 List<Card> draggedCards = new(FrmGame.CurDragCards);
                 FrmGame.StopDragCards();
                 Game.CallDragEndedOnAll();
 
-                if (lastDropTarget is not null && lastDropTarget.CanDrop(draggedCards[0]))
-                {
+                // handle valid drop
+                if (lastDropTarget is not null && lastDropTarget.CanDrop(draggedCards[0])) {
+                    IDragFrom source = FrmGame.CardDraggedFrom;
+                    Card newBottomCard = null;
                     foreach (Card card in draggedCards)
                     {
                         FrmGame.CardDraggedFrom.RemCard(card);
                         lastDropTarget.Dropped(card);
+                        card.PicBox.BringToFront();
+                        if (source is TableauStack sourceTableauStack && sourceTableauStack.Cards.Count > 0)
+                        {
+                            newBottomCard = sourceTableauStack.Cards.Last.Value;
+                            if (!newBottomCard.FaceUp)
+                            {
+                                newBottomCard.FlipOver();
+                            }
+                        }
+                    }
+                    Game.RecordMove(draggedCards, source, lastDropTarget, newBottomCard);
+                }
+                else {
+                    // snap back to original positions
+                    for (int i = 0; i < draggedCards.Count; i++)
+                    {
+                        Card card = draggedCards[i];
+                        FrmGame.Instance.RemCard(card);
+                        conBeforeDrag?.AddCard(card);
+
+                        // restore orginial positions with vertical offsets of 20 pixels
+                        card.PicBox.Location = new Point(relLocBeforeDrag.X, relLocBeforeDrag.Y + (i * 20));
                         card.PicBox.BringToFront();
                     }
                 }
@@ -282,11 +312,12 @@ public class Card
             }
         };
 
-        PicBox.MouseMove += (sender, e) =>
-        {
-            if (FrmGame.IsDraggingCard(this))
-            {
+        // Move the card as mouse moves while dragging
+        PicBox.MouseMove += (sender, e) => {
+            if (FrmGame.IsDraggingCard(this)) {
                 List<Card> draggedCards = FrmGame.CurDragCards;
+
+                // the first card drives the movement
                 if (draggedCards.IndexOf(this) == 0)
                 {
                     var dragged = (Control)sender;
@@ -295,7 +326,10 @@ public class Card
                     dragged.Left = screenPos.X - dragOffset.X;
                     dragged.Top = screenPos.Y - dragOffset.Y;
 
+                    // Find the control currently under the mouse
                     Control target = FrmGame.Instance.GetChildAtPoint(dragged.Parent.PointToClient(screenPos));
+
+                    // Avoid detecting the dragged control itself
                     if (target is not null && target != dragged)
                     {
                         var dropTarget = Game.FindDropTarget(target);
@@ -363,19 +397,33 @@ public class TableauStack : IFindMoveableCards, IDropTarget, IDragFrom
     }
 
     // Returns a list of cards starting from card c to the end of the list
-    public List<Card> GetStackFrom(Card c)
-    {
+    public List<Card> GetStackFrom(Card c) {
         List<Card> list = new();
         bool found = false;
 
-        foreach (Card card in Cards)
-        {
+        foreach (Card card in Cards) {
             if (card == c)
                 found = true;
             if (found)
                 list.Add(card);
         }
         return list;
+    }
+
+    // finds the first face-up card and returns the list of all cards from there to the end of the list
+    public List<Card> FindMoveableCards() {
+        List<Card> movableCards = new();
+
+        bool foundFaceUp = false;
+        foreach (Card card in Cards) {
+            if (card.FaceUp) {
+                foundFaceUp = true;
+            }
+            if (foundFaceUp) {
+                movableCards.Add(card);
+            }
+        }
+        return movableCards;
     }
 
     // finds the first face-up card and returns the list of all cards from there to the end of the list
@@ -562,9 +610,13 @@ public class FoundationStack : IFindMoveableCards, IDropTarget, IDragFrom
     {
         Card topCard = Cards.Count > 0 ? Cards.Peek() : null;
 
-        // Wild cards still always valid
-        if ((topCard is not null && topCard.Type == CardType.WILD) || c.Type == CardType.WILD)
-            return true;
+        // don't allow wildcards in the foundation stacks
+        if (c.Type == CardType.WILD)
+            return false;
+
+        // if either the card being dragged or the card being dragged over are WILD, return true
+        //if (topCard is not null)
+        //    return true;
 
         bool suitCheck = Suit == c.Suit;
 
@@ -632,6 +684,7 @@ public static class Game
     public static TableauStack[] TableauStacks;
     public static Talon Talon { get; set; }
     public static int StockReloadCount { get; set; }
+    private static Stack<ICommand> moveStack { get; set; } 
 
     public static bool IsReversed { get; private set; } = false;
 
@@ -703,6 +756,9 @@ public static class Game
 
         // Remove the visual from the UI if it still exists (for some reason)
         c.PicBox?.Parent?.RemCard(c);
+
+        // create move command stack
+        moveStack = new();
     }
 
 
@@ -724,10 +780,8 @@ public static class Game
 
     // finds which pile (tableau, talon, foundation) a card was dragged from. It returns something that
     // implements the IDragFrom interface
-    public static IDragFrom FindDragFrom(Card c)
-    {
-        if (Talon.Cards.Contains(c))
-        {
+    public static IDragFrom FindDragFrom(Card c) {
+        if (Talon.Cards.Contains(c)) {
             return Talon;
         }
         foreach (var foundationStack in FoundationStacks)
@@ -790,6 +844,25 @@ public static class Game
             }
         }
         return false;
+    }
+
+    public static void RecordMove(List<Card> movedCards, IDragFrom src, IDropTarget dest, Card flipped)
+    {
+        MoveCommand cmd = new(movedCards, src, dest, flipped);
+        {
+            moveStack.Push(cmd);
+        }
+    }
+
+    public static bool CanUndo => moveStack.Count > 0;
+
+    public static void UndoLastMove()
+    {
+        if (moveStack.Count > 0)
+        {
+            ICommand cmd = moveStack.Pop();
+            cmd.Undo();
+        }
     }
 
     public static bool HasWon()
@@ -863,5 +936,69 @@ public static class Game
             }
         };
         tmr.Start();
+    }
+
+    //public static void checkIfFlip()
+    //{
+    //    foreach (var tableauStack in TableauStacks)
+    //    {
+    //        Card c = tableauStack.GetBottomCard();
+    //        FlipOverLastCard(c);
+    //    }
+    //}
+
+    //public static void FlipOverLastCard(Card c)
+    //{
+    //    //FaceUp = !FaceUp;
+    //    c.PicBox.BackgroundImage = c.PicImg;
+    //}
+}
+
+// interface for a command that can execute and undo a move
+public interface ICommand
+{
+    void Execute();
+    void Undo();
+}
+
+// Stores a single move that was made. Every move knows how to execute or undo itself
+public class MoveCommand : ICommand
+{
+    private readonly List<Card> cardsMoved;
+    private readonly IDragFrom source;
+    private readonly IDropTarget dest;
+
+    private readonly Control previousParent;
+    private readonly List<Point> previousLocations;
+    private readonly Card flippedCard;
+
+    public MoveCommand(List<Card> cardsMoved, IDragFrom source, IDropTarget dest, Card flippedCard)
+    {
+        this.cardsMoved = cardsMoved;
+        this.source = source;
+        this.dest = dest;
+        this.flippedCard = flippedCard;
+    }
+
+    public void Execute()
+    {
+        foreach (Card card in cardsMoved)
+        {
+            source.RemCard(card);
+            dest.Dropped(card);
+        }
+    }
+
+    public void Undo()
+    {
+        flippedCard?.FlipOver();
+        foreach (Card card in cardsMoved)
+        {
+            if (dest is IDragFrom dragFromDest)
+                dragFromDest.RemCard(card);
+            source.AddCard(card);
+            card.PicBox.Location = card.relLocBeforeDrag;
+            card.PicBox.BringToFront();
+        }
     }
 }

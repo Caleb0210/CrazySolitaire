@@ -201,5 +201,9 @@ namespace CrazySolitaire {
             reverseModeLabel.Visible = Game.IsReversed;
         }
 
+        private void button1_Click(object sender, EventArgs e)
+        {
+            Game.UndoLastMove();
+        }
     }
 }
