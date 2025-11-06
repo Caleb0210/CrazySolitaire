@@ -1,4 +1,4 @@
-using CrazySolitaire.Properties;
+﻿using CrazySolitaire.Properties;
 using System.Diagnostics;
 
 namespace CrazySolitaire {
@@ -6,10 +6,12 @@ namespace CrazySolitaire {
     {
         private static Stopwatch _stopwatch = new Stopwatch();
         private static System.Windows.Forms.Timer _uiTimer = new System.Windows.Forms.Timer();
-        public static Card CurDragCard { get; private set; }
+        public static List<Card> CurDragCards { get; private set; }
         public static IDragFrom CardDraggedFrom { get; private set; }
         public static FrmGame Instance { get; private set; }
 
+        // Reverse mode indicator label
+        private Label reverseModeLabel;
         protected override CreateParams CreateParams
         {
             get
@@ -41,6 +43,21 @@ namespace CrazySolitaire {
                 [Suit.CLUBS] = panFoundationStack_Clubs,
             };
             Game.Init(panTalon, panTableauStacks, panFoundationStacks);
+
+            // Create the Reverse Mode indicator
+            reverseModeLabel = new Label()
+            {
+                Text = "REVERSE MODE ACTIVE",
+                ForeColor = Color.Yellow,
+                Font = new Font("Arial", 14, FontStyle.Bold),
+                Dock = DockStyle.Bottom,        
+                Height = 35,
+                TextAlign = ContentAlignment.MiddleCenter,
+                BackColor = Color.DarkRed,
+                Visible = false
+            };
+            Controls.Add(reverseModeLabel);
+            reverseModeLabel.BringToFront();
 
             _stopwatch.Restart();
             _uiTimer.Start();
@@ -109,17 +126,24 @@ namespace CrazySolitaire {
             }
         }
 
-        public static void DragCard(Card c)
+        public static void DragCards(List<Card> cards)
         {
-            CurDragCard = c;
-            CardDraggedFrom = Game.FindDragFrom(c);
+            if (cards == null || cards.Count == 0)
+                return;
+
+            CurDragCards = cards;
+            CardDraggedFrom = Game.FindDragFrom(cards[0]);
         }
-        public static void StopDragCard(Card c)
+        public static void StopDragCards()
         {
-            if (CurDragCard == c)
-                CurDragCard = null;
+            CurDragCards.Clear();
         }
-        public static bool IsDraggingCard(Card c) => CurDragCard == c;
+        public static bool IsDraggingCard(Card c)
+        {
+            return CurDragCards != null && CurDragCards.Contains(c);
+        }
+
+        public static bool IsDragging => CurDragCards.Count > 0;
 
         private void FrmGame_FormClosing(object sender, FormClosingEventArgs e)
         {
@@ -129,6 +153,8 @@ namespace CrazySolitaire {
         {
             // Stop interaction
             this.Enabled = false;
+            string time = Timer.Text;
+            stopTime();
 
             Form winForm = new Form()
             {
@@ -141,9 +167,9 @@ namespace CrazySolitaire {
 
             Label lbl = new Label()
             {
-                Text = "Congratulations! You won!",
+                Text = "Congratulations! You won! It took " + time,
                 ForeColor = Color.White,
-                Font = new Font("Arial", 33, FontStyle.Bold),
+                Font = new Font("Arial", 26, FontStyle.Bold),
                 Dock = DockStyle.Fill,
                 TextAlign = ContentAlignment.MiddleCenter
             };
@@ -165,6 +191,14 @@ namespace CrazySolitaire {
             winForm.Controls.Add(lbl);
             winForm.Controls.Add(btnQuit);
             winForm.ShowDialog();
+        }
+        // Called by Game.ToggleReverseMode() to update the indicator label
+        public void UpdateReverseStatus()
+        {
+            if (reverseModeLabel == null)
+                return;
+
+            reverseModeLabel.Visible = Game.IsReversed;
         }
 
     }
