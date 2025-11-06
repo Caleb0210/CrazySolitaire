@@ -452,8 +452,12 @@ public class FoundationStack : IFindMoveableCards, IDropTarget, IDragFrom {
     public bool CanDrop(Card c) {
         Card topCard = Cards.Count > 0 ? Cards.Peek() : null;
 
+        // don't allow wildcards in the foundation stacks
+        if (c.Type == CardType.WILD)
+            return false;
+
         // if either the card being dragged or the card being dragged over are WILD, return true
-        if ((topCard is not null && topCard.Type == CardType.WILD) || c.Type == CardType.WILD)
+        if (topCard is not null)
             return true;
 
         bool suitCheck;
@@ -483,8 +487,6 @@ public class FoundationStack : IFindMoveableCards, IDropTarget, IDragFrom {
         Panel.AddCard(c);
         c.AdjustLocation(0, 0);
         c.PicBox.BringToFront();
-
-        FrmGame.Instance.ShowWinScreen();
 
         // check if the player has completed the game
         if (Game.HasWon())
