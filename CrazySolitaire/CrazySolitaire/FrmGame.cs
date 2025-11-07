@@ -66,20 +66,20 @@ namespace CrazySolitaire {
             _uiTimer.Interval = 100;
             _uiTimer.Tick += UiTimer_Tick;
 
-            inactivityTimer.Interval = 1000;
-            inactivityTimer.Tick += (sender, e) =>
-            {
-                if ((DateTime.Now - lastInteraction).TotalSeconds >= 15)
-                {
-                    if (Game.CanUndo && !IsDragging)
-                    {
-                        Game.UndoLastMove();
-                        lastInteraction = DateTime.Now;
-                        ScreenShake();
-                    }
-                }
-            };
-            inactivityTimer.Start();
+            //inactivityTimer.Interval = 1000;
+            //inactivityTimer.Tick += (sender, e) =>
+            //{
+            //    if ((DateTime.Now - lastInteraction).TotalSeconds >= 15)
+            //    {
+            //        //if (Game.CanUndo && !IsDragging)
+            //        //{
+            //        //    Game.UndoLastMove();
+            //        //    lastInteraction = DateTime.Now;
+            //        //    ScreenShake();
+            //        //}
+            //    }
+            //};
+            //inactivityTimer.Start();
         }
         private void UiTimer_Tick(object sender, EventArgs e)
         {
@@ -88,7 +88,7 @@ namespace CrazySolitaire {
 
         public void RegisterInteraction()
         {
-            lastInteraction = DateTime.Now;
+            //lastInteraction = DateTime.Now;
         }
         private string FormatTime(TimeSpan ts)
         {
