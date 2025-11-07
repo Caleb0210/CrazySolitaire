@@ -527,7 +527,18 @@ public class Talon : IFindMoveableCards, IDragFrom
     // puts all Talon cards back into the deck Queue
     public void ReleaseIntoDeck(Deck deck)
     {
-        foreach (var card in Cards)
+        // temporary stack to send the cards in order to easily reverse the order
+        var temp = new Stack<Card>();
+
+        // sends the cards from the talon to the temp stack
+        while (Cards.Count > 0)
+        {
+            Card card = Cards.Pop();
+            Panel.RemCard(card);
+            temp.Push(card);
+        }
+        // puts them back into the stock in the correct order now
+        foreach (var card in temp)
         {
             deck.Release(card);
             Panel.RemCard(card);
