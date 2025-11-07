@@ -108,6 +108,8 @@ namespace CrazySolitaire {
         {
             if (pbStock.BackgroundImage is null)
             {
+                //Game.Talon.ReleaseIntoDeck(Game.Deck);            // uncomment to play unlimited refreshes
+                //pbStock.BackgroundImage = Resources.back_green;   // comment out the rest of this if statement though
                 Game.StockReloadCount++;
                 if (Game.StockReloadCount > 3)
                 {
