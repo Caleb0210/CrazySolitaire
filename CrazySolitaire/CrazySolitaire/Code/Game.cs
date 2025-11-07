@@ -164,11 +164,6 @@ public class Card
     private Control conBeforeDrag; // original parent control
     private IDropTarget lastDropTarget; // last potential drop area that was hovered over
 
-    private Point dragOffset;
-    private Point relLocBeforeDrag;
-    private Control conBeforeDrag;
-    private IDropTarget lastDropTarget;
-
     public Card(CardType type, Suit suit)
     {
         Type = type;
@@ -298,17 +293,6 @@ public class Card
                         card.PicBox.BringToFront();
                     }
                 }
-                else
-                {
-                    for (int i = 0; i < draggedCards.Count; i++)
-                    {
-                        Card card = draggedCards[i];
-                        FrmGame.Instance.RemCard(card);
-                        conBeforeDrag?.AddCard(card);
-                        card.PicBox.Location = new Point(relLocBeforeDrag.X, relLocBeforeDrag.Y + (i * 20));
-                        card.PicBox.BringToFront();
-                    }
-                }
             }
         };
 
@@ -420,26 +404,6 @@ public class TableauStack : IFindMoveableCards, IDropTarget, IDragFrom
                 foundFaceUp = true;
             }
             if (foundFaceUp) {
-                movableCards.Add(card);
-            }
-        }
-        return movableCards;
-    }
-
-    // finds the first face-up card and returns the list of all cards from there to the end of the list
-    public List<Card> FindMoveableCards()
-    {
-        List<Card> movableCards = new();
-
-        bool foundFaceUp = false;
-        foreach (Card card in Cards)
-        {
-            if (card.FaceUp)
-            {
-                foundFaceUp = true;
-            }
-            if (foundFaceUp)
-            {
                 movableCards.Add(card);
             }
         }
