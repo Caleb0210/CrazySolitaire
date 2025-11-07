@@ -209,8 +209,8 @@ public class Card
             if (IsReverseCard)
                 return;
 
-            //if (!FaceUp && Game.CanFlipOver(this))
-            //    FlipOver();
+            if (!FaceUp && Game.CanFlipOver(this))
+                FlipOver();
         };
 
         // Begin dragging when mouse is pressed
@@ -583,32 +583,44 @@ public class FoundationStack : IFindMoveableCards, IDropTarget, IDragFrom
     // in ascending order
     public bool CanDrop(Card c)
     {
-        Card topCard = Cards.Count > 0 ? Cards.Peek() : null;
-
-        // don't allow wildcards in the foundation stacks
+        // Wildcards not allowed
         if (c.Type == CardType.WILD)
             return false;
 
-        // if either the card being dragged or the card being dragged over are WILD, return true
-        //if (topCard is not null)
-        //    return true;
+        Card topCard = Cards.Count > 0 ? Cards.Peek() : null;
 
         bool suitCheck = Suit == c.Suit;
 
         bool typeCheck;
+
         if (Game.IsReversed)
         {
-            // Reversed mode: (King -> Ace)
-            typeCheck = topCard is null
-                ? c.Type == CardType.KING
-                : topCard.Type == c.Type + 1;
+            // REVERSE MODE 
+            if (topCard == null)
+            {
+                // In reverse mode, allow King even if foundation already has cards
+                typeCheck = c.Type == CardType.KING;
+            }
+            else
+            {
+                // Descend normally
+                typeCheck =
+                    (topCard.Type == c.Type + 1) ||
+                    (c.Type == CardType.KING); // King can always go on top in reverse mode
+            }
         }
         else
         {
-            // Normal mode: (Ace ->  King)
-            typeCheck = topCard is null
-                ? c.Type == CardType.ACE
-                : topCard.Type == c.Type - 1;
+            // NORMAL MODE
+            if (topCard == null)
+            {
+                typeCheck = c.Type == CardType.ACE;
+            }
+            else
+            {
+                typeCheck =
+                    (topCard.Type == c.Type - 1);
+            }
         }
 
         return suitCheck && typeCheck;
@@ -712,7 +724,7 @@ public static class Game
         moveStack = new();
     }
 
-    
+
 
     // Toggle reverse mode and flip all tableau cards
     public static void ToggleReverseMode()
