@@ -209,8 +209,8 @@ public class Card
             if (IsReverseCard)
                 return;
 
-            if (!FaceUp && Game.CanFlipOver(this))
-                FlipOver();
+            //if (!FaceUp && Game.CanFlipOver(this))
+            //    FlipOver();
         };
 
         // Begin dragging when mouse is pressed
@@ -696,7 +696,11 @@ public static class Game
             c.AdjustLocation(0, i * VERT_OFFSET);
             TableauStacks[i].AddCard(c);
         }
+        // create move command stack
+        moveStack = new();
     }
+
+    
 
     // Toggle reverse mode and flip all tableau cards
     public static void ToggleReverseMode()
@@ -720,9 +724,6 @@ public static class Game
 
         // Remove the visual from the UI if it still exists (for some reason)
         c.PicBox?.Parent?.RemCard(c);
-
-        // create move command stack
-        moveStack = new();
     }
 
 
