@@ -71,7 +71,7 @@ namespace CrazySolitaire {
             {
                 if ((DateTime.Now - lastInteraction).TotalSeconds >= 15)
                 {
-                    if (Game.CanUndo)
+                    if (Game.CanUndo && !IsDragging)
                     {
                         Game.UndoLastMove();
                         lastInteraction = DateTime.Now;
