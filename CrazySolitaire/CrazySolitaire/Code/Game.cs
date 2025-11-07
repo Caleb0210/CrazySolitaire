@@ -285,6 +285,7 @@ public class Card
                         }
                     }
                     Game.RecordMove(draggedCards, source, lastDropTarget, newBottomCard);
+                    FrmGame.Instance.RegisterInteraction();
                 }
                 else
                 {
@@ -756,6 +757,7 @@ public static class Game
     {
         // Flip the game rules
         ToggleReverseMode();
+        FrmGame.Instance.ScreenShake(8, 200);
 
         // Remove the card from wherever it is (Talon / Tableau / Foundation)
         FindDragFrom(c)?.RemCard(c);
@@ -869,6 +871,7 @@ public static class Game
         {
             ICommand cmd = moveStack.Pop();
             cmd.Undo();
+            FrmGame.Instance.ScreenShake(5, 50);
         }
     }
 

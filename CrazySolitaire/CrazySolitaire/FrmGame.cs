@@ -6,6 +6,8 @@ namespace CrazySolitaire {
     {
         private static Stopwatch _stopwatch = new Stopwatch();
         private static System.Windows.Forms.Timer _uiTimer = new System.Windows.Forms.Timer();
+        private System.Windows.Forms.Timer inactivityTimer = new();
+        private DateTime lastInteraction = DateTime.Now;
         public static List<Card> CurDragCards { get; private set; }
         public static IDragFrom CardDraggedFrom { get; private set; }
         public static FrmGame Instance { get; private set; }
@@ -63,12 +65,31 @@ namespace CrazySolitaire {
             _uiTimer.Start();
             _uiTimer.Interval = 100;
             _uiTimer.Tick += UiTimer_Tick;
+
+            inactivityTimer.Interval = 1000;
+            inactivityTimer.Tick += (sender, e) =>
+            {
+                if ((DateTime.Now - lastInteraction).TotalSeconds >= 15)
+                {
+                    if (Game.CanUndo)
+                    {
+                        Game.UndoLastMove();
+                        lastInteraction = DateTime.Now;
+                        ScreenShake();
+                    }
+                }
+            };
+            inactivityTimer.Start();
         }
         private void UiTimer_Tick(object sender, EventArgs e)
         {
             Timer.Text = FormatTime(_stopwatch.Elapsed);
         }
 
+        public void RegisterInteraction()
+        {
+            lastInteraction = DateTime.Now;
+        }
         private string FormatTime(TimeSpan ts)
         {
             int totalSeconds = (int)ts.TotalSeconds;
@@ -205,5 +226,31 @@ namespace CrazySolitaire {
         {
             Game.UndoLastMove();
         }
+
+        public async void ScreenShake(int intensity = 10, int duration = 250)
+        {
+            var originalLocation = this.Location;
+            Random rand = new();
+
+            int elapsed = 0;
+            int interval = 20;
+
+            while (elapsed < duration)
+            {
+                int offsetX = rand.Next(-intensity, intensity + 1);
+                int offsetY = rand.Next(-intensity, intensity + 1);
+
+                this.Location = new Point(originalLocation.X + offsetX, originalLocation.Y + offsetY);
+                await Task.Delay(interval);
+
+                this.Location = originalLocation;
+                await Task.Delay(interval);
+
+                elapsed += interval * 2;
+            }
+
+            this.Location = originalLocation; // ensure reset
+        }
+
     }
 }
