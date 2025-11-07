@@ -209,6 +209,7 @@ public class Card
             if (IsReverseCard)
                 return;
 
+            // need this for after reverse card is clicked on a stack (looking for fix)
             if (!FaceUp && Game.CanFlipOver(this))
                 FlipOver();
         };
@@ -265,6 +266,7 @@ public class Card
                 // handle valid drop
                 if (lastDropTarget is not null && lastDropTarget.CanDrop(draggedCards[0]))
                 {
+                    // remembers which stack the card was dragged from
                     IDragFrom source = FrmGame.CardDraggedFrom;
                     Card newBottomCard = null;
                     foreach (Card card in draggedCards)
@@ -272,6 +274,7 @@ public class Card
                         FrmGame.CardDraggedFrom.RemCard(card);
                         lastDropTarget.Dropped(card);
                         card.PicBox.BringToFront();
+                        // goes to the tableau the card was dragged from and flips the last card over
                         if (source is TableauStack sourceTableauStack && sourceTableauStack.Cards.Count > 0)
                         {
                             newBottomCard = sourceTableauStack.Cards.Last.Value;
@@ -527,7 +530,18 @@ public class Talon : IFindMoveableCards, IDragFrom
     // puts all Talon cards back into the deck Queue
     public void ReleaseIntoDeck(Deck deck)
     {
-        foreach (var card in Cards)
+        // temporary stack to send the cards in order to easily reverse the order
+        var temp = new Stack<Card>();
+
+        // sends the cards from the talon to the temp stack
+        while (Cards.Count > 0)
+        {
+            Card card = Cards.Pop();
+            Panel.RemCard(card);
+            temp.Push(card);
+        }
+        // puts them back into the stock in the correct order now
+        foreach (var card in temp)
         {
             deck.Release(card);
             Panel.RemCard(card);
